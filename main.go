@@ -291,7 +291,14 @@ func handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	bodyJSON, _ := json.Marshal(reqBody)
 
-	llmURL := strings.TrimRight(cfg.LLMURL, "/") + "/v1/chat/completions"
+	base := strings.TrimRight(cfg.LLMURL, "/")
+	// If the URL already ends with /v1, don't double it.
+	var llmURL string
+	if strings.HasSuffix(base, "/v1") {
+		llmURL = base + "/chat/completions"
+	} else {
+		llmURL = base + "/v1/chat/completions"
+	}
 	req, err := http.NewRequestWithContext(r.Context(), "POST", llmURL, bytes.NewReader(bodyJSON))
 	if err != nil {
 		fmt.Fprintf(w, "data: Request error: %s\n\ndata: [DONE]\n\n", err)
@@ -299,7 +306,12 @@ func handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if cfg.LLMAPIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+cfg.LLMAPIKey)
+		// Anthropic uses x-api-key; most others use Authorization: Bearer.
+		if strings.Contains(cfg.LLMURL, "anthropic.com") {
+			req.Header.Set("x-api-key", cfg.LLMAPIKey)
+		} else {
+			req.Header.Set("Authorization", "Bearer "+cfg.LLMAPIKey)
+		}
 	}
 
 	client := &http.Client{Timeout: 120 * time.Second}
