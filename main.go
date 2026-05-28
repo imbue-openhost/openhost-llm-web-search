@@ -89,8 +89,30 @@ func searchSearxng(query string, cfg Settings) ([]SearxResult, error) {
 	base := strings.TrimRight(cfg.SearxngURL, "/")
 	u := fmt.Sprintf("%s/search?q=%s&format=json&categories=general&language=en", base, url.QueryEscape(query))
 
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, fmt.Errorf("searxng request build failed: %w", err)
+	}
+
+	// If using an internal OpenHost URL (host.containers.internal), set the
+	// Host header from the configured URL so the router routes correctly.
+	// Also try the OPENHOST_ROUTER_URL as the transport when the configured
+	// URL points to an external domain that the container can't reach directly.
+	parsedURL, _ := url.Parse(cfg.SearxngURL)
+	routerURL := os.Getenv("OPENHOST_ROUTER_URL")
+	if routerURL != "" && parsedURL != nil && parsedURL.Host != "" {
+		// Rewrite the request to go through the internal router, preserving the Host header.
+		internalBase := strings.TrimRight(routerURL, "/")
+		internalURL := fmt.Sprintf("%s/search?q=%s&format=json&categories=general&language=en", internalBase, url.QueryEscape(query))
+		req, err = http.NewRequest("GET", internalURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("searxng internal request build failed: %w", err)
+		}
+		req.Host = parsedURL.Host
+	}
+
 	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(u)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("searxng request failed: %w", err)
 	}
