@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js"></script>
+    <script src="/static/marked.min.js"></script>
+</head>
+<body>
+    <nav>
+        <a href="/" class="nav-brand">Search</a>
+        <a href="/settings">Settings</a>
+    </nav>
+    <main>
+        {{if not .Configured}}
+        <div class="notice">
+            <p>Please <a href="/settings">configure your settings</a> before searching.</p>
+        </div>
+        {{end}}
+        <form hx-post="/search" hx-target="#results" hx-indicator="#spinner" class="search-form">
+            <input type="text" name="q" placeholder="Ask anything..." autofocus autocomplete="off" required>
+            <button type="submit">Search</button>
+        </form>
+        <div id="spinner" class="htmx-indicator">Searching...</div>
+        <div id="results"></div>
+    </main>
+</body>
+</html>

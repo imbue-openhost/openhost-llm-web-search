@@ -1,0 +1,40 @@
+<div class="sources">
+    <h3>Sources</h3>
+    <div class="source-list">
+        {{range $i, $r := .Results}}
+        <a href="{{$r.URL}}" target="_blank" rel="noopener" class="source-card">
+            <span class="source-num">[{{add $i 1}}]</span>
+            <span class="source-title">{{$r.Title}}</span>
+        </a>
+        {{end}}
+    </div>
+</div>
+<div class="answer">
+    <h3>Answer</h3>
+    <div id="answer-content"></div>
+</div>
+<script>
+(function() {
+    const el = document.getElementById('answer-content');
+    let fullText = '';
+    const evtSource = new EventSource('/stream?q=' + encodeURIComponent('{{.Query}}'));
+    evtSource.onmessage = function(e) {
+        if (e.data === '[DONE]') {
+            evtSource.close();
+            return;
+        }
+        try {
+            fullText += JSON.parse(e.data);
+        } catch(_) {
+            fullText += e.data;
+        }
+        el.innerHTML = marked.parse(fullText);
+    };
+    evtSource.onerror = function() {
+        evtSource.close();
+        if (!fullText) {
+            el.innerHTML = '<p class="error-text">Failed to get response from LLM.</p>';
+        }
+    };
+})();
+</script>
